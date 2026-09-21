@@ -634,7 +634,9 @@ fun SettingsScreen(
             HorizontalDivider()
             Text("Дверь", style = MaterialTheme.typography.titleMedium)
             Text("🚪 Дверь в OMAX уже построена. Теперь можно двигаться дальше.")
-            Button(onClick = { }) { Text("Открыть дверь") }
+            Button(onClick = { }) { Text("Открыть дверь 🚪") }
+            Text("Ручка", style = MaterialTheme.typography.titleSmall)
+            Button(onClick = { }) { Text("🔧 Нажать на ручку") }
 
             HorizontalDivider()
             Text("Тёмная тема", style = MaterialTheme.typography.titleMedium)
