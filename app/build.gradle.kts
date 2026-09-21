@@ -5,6 +5,8 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+val githubClientId = providers.gradleProperty("githubClientId").orElse("").get()
+
 android {
     namespace = "com.omax.app"
     compileSdk = 35
@@ -15,6 +17,19 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField("String", "GITHUB_CLIENT_ID", "\"$githubClientId\"")
+        }
+        release {
+            buildConfigField("String", "GITHUB_CLIENT_ID", "\"$githubClientId\"")
+        }
     }
 }
 
