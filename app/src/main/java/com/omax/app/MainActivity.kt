@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,12 +19,7 @@ data class ChatMessage(val text: String, val fromUser: Boolean)
 
 @Composable
 fun OmaxTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = MaterialTheme.colorScheme.primary
-        ),
-        content = content
-    )
+    MaterialTheme(colorScheme = darkColorScheme(), content = content)
 }
 
 class MainActivity : ComponentActivity() {
@@ -36,20 +33,35 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun OmaxApp() {
     var input by remember { mutableStateOf("") }
+    var showSettings by remember { mutableStateOf(false) }
     var messages by remember {
         mutableStateOf(listOf(ChatMessage("Привет! Я Омакс 🤖", false)))
     }
 
+    if (showSettings) {
+        SettingsScreen(onBack = { showSettings = false })
+        return
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Омакс") },
-                actions = { TextButton(onClick = {}) { Text("⚙") } }
+            CenterAlignedTopAppBar(
+                title = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Омакс", style = MaterialTheme.typography.titleLarge)
+                        Text("Нейросеть", style = MaterialTheme.typography.labelSmall)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Настройки")
+                    }
+                }
             )
         },
         bottomBar = {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                Modifier.fillMaxWidth().padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
@@ -57,41 +69,67 @@ fun OmaxApp() {
                     onValueChange = { input = it },
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Напиши Омаксу...") },
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(22.dp),
                     singleLine = true
                 )
                 Spacer(Modifier.width(8.dp))
-                Button(
+                FilledIconButton(
                     onClick = {
                         if (input.isNotBlank()) {
                             messages = messages + ChatMessage(input.trim(), true)
                             input = ""
                         }
-                    },
-                    shape = RoundedCornerShape(20.dp)
+                    }
                 ) { Text("➤") }
             }
         }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
+            Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(messages) { message ->
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth(),
                     horizontalArrangement = if (message.fromUser) Arrangement.End else Arrangement.Start
                 ) {
                     Surface(
                         shape = RoundedCornerShape(18.dp),
                         tonalElevation = 3.dp,
-                        modifier = Modifier.widthIn(max = 320.dp)
+                        modifier = Modifier.widthIn(max = 360.dp)
                     ) {
-                        Text(message.text, modifier = Modifier.padding(14.dp))
+                        Text(message.text, Modifier.padding(14.dp))
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(onBack: () -> Unit) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Настройки") },
+                navigationIcon = {
+                    TextButton(onClick = onBack) { Text("←") }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Омакс", style = MaterialTheme.typography.headlineMedium)
+            Text("Настройки приложения", style = MaterialTheme.typography.bodyLarge)
+            HorizontalDivider()
+            Text("Тёмная тема", style = MaterialTheme.typography.titleMedium)
+            Text("Сейчас включена автоматически.", style = MaterialTheme.typography.bodyMedium)
+            Text("Версия 0.1.0", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
