@@ -565,8 +565,12 @@ fun OmaxApp() {
             }
         }
 
-        LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            LazyColumn(
+                Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
