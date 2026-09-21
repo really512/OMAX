@@ -1,6 +1,7 @@
 package com.omax.app
 
 import android.os.Bundle
+import android.util.Patterns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -13,7 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 
 data class ChatMessage(val text: String, val fromUser: Boolean)
@@ -46,21 +49,135 @@ private fun generateOmaxReply(history: List<ChatMessage>): String {
         lower.contains("что я") && previousUserMessages.isNotEmpty() ->
             "До этого ты писал: «" + previousUserMessages.last() + "»."
         lower.endsWith("?") ->
-            "Я понял вопрос: «" + last + "».
-
-Пока мой локальный мозг умеет анализировать контекст простыми правилами. Следующий шаг — подключить настоящую модель, чтобы отвечать на вопросы свободно."
+            "Я понял вопрос: «" + last + "».\n\nПока мой локальный мозг умеет анализировать контекст простыми правилами. Следующий шаг — подключить настоящую модель, чтобы отвечать на вопросы свободно."
         previousUserMessages.isNotEmpty() ->
-            "Понял. Ты написал: «" + last + "».
+            "Понял. Ты написал: «" + last + "».\n\nИ это продолжает наш предыдущий разговор: «" + previousUserMessages.last() + "» 🧠"
+        else -> "Понял сообщение: «" + last + "» 🧠\nЯ обработал именно твой текст, а не выбрал случайный ответ."
+    }
+}
 
-И это продолжает наш предыдущий разговор: «" + previousUserMessages.last() + "» 🧠"
-        else -> "Понял сообщение: «" + last + "» 🧠
-Я обработал именно твой текст, а не выбрал случайный ответ."
+@Composable
+fun AuthScreen(auth: FirebaseAuth, onLoggedIn: () -> Unit) {
+    var registerMode by remember { mutableStateOf(true) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
+
+    fun finish(result: com.google.firebase.auth.AuthResult) {
+        loading = false
+        error = null
+        onLoggedIn()
+    }
+
+    Column(
+        Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Омакс 🤖", style = MaterialTheme.typography.headlineLarge)
+        Spacer(Modifier.height(8.dp))
+        Text(if (registerMode) "Создание аккаунта" else "Вход в аккаунт")
+        Spacer(Modifier.height(24.dp))
+
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it; error = null },
+            label = { Text("Email") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it; error = null },
+            label = { Text("Пароль") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        if (registerMode) {
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it; error = null },
+                label = { Text("Повторите пароль") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        error?.let {
+            Spacer(Modifier.height(12.dp))
+            Text(it, color = MaterialTheme.colorScheme.error)
+        }
+
+        Spacer(Modifier.height(20.dp))
+        Button(
+            enabled = !loading,
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                val cleanEmail = email.trim()
+
+                when {
+                    !Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches() ->
+                        error = "Введите корректный email."
+                    password.length < 6 ->
+                        error = "Пароль должен содержать минимум 6 символов."
+                    registerMode && password != confirmPassword ->
+                        error = "Пароли не совпадают."
+                    else -> {
+                        loading = true
+                        if (registerMode) {
+                            auth.createUserWithEmailAndPassword(cleanEmail, password)
+                                .addOnSuccessListener(::finish)
+                                .addOnFailureListener {
+                                    loading = false
+                                    error = it.message ?: "Не удалось создать аккаунт."
+                                }
+                        } else {
+                            auth.signInWithEmailAndPassword(cleanEmail, password)
+                                .addOnSuccessListener(::finish)
+                                .addOnFailureListener {
+                                    loading = false
+                                    error = it.message ?: "Не удалось войти."
+                                }
+                        }
+                    }
+                }
+            }
+        ) {
+            Text(if (loading) "Подождите…" else if (registerMode) "Зарегистрироваться" else "Войти")
+        }
+
+        Spacer(Modifier.height(8.dp))
+        TextButton(
+            enabled = !loading,
+            onClick = {
+                registerMode = !registerMode
+                error = null
+            }
+        ) {
+            Text(if (registerMode) "Уже есть аккаунт? Войти" else "Нет аккаунта? Регистрация")
+        }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OmaxApp() {
+    val auth = remember { FirebaseAuth.getInstance() }
+    var loggedIn by remember { mutableStateOf(auth.currentUser != null) }
+
+    if (!loggedIn) {
+        AuthScreen(auth = auth, onLoggedIn = { loggedIn = true })
+        return
+    }
+
     var input by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
     var showNewChat by remember { mutableStateOf(false) }
@@ -83,7 +200,14 @@ fun OmaxApp() {
     }
 
     if (showSettings) {
-        SettingsScreen(onBack = { showSettings = false })
+        SettingsScreen(
+            email = auth.currentUser?.email.orEmpty(),
+            onSignOut = {
+                auth.signOut()
+                loggedIn = false
+            },
+            onBack = { showSettings = false }
+        )
         return
     }
 
@@ -170,7 +294,7 @@ fun OmaxApp() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(email: String, onSignOut: () -> Unit, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -184,10 +308,12 @@ fun SettingsScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text("Омакс", style = MaterialTheme.typography.headlineMedium)
-            Text("Настройки приложения", style = MaterialTheme.typography.bodyLarge)
+            Text("Аккаунт", style = MaterialTheme.typography.titleMedium)
+            Text(email.ifBlank { "Email не указан" })
             HorizontalDivider()
             Text("Тёмная тема", style = MaterialTheme.typography.titleMedium)
             Text("Сейчас включена автоматически.", style = MaterialTheme.typography.bodyMedium)
+            Button(onClick = onSignOut) { Text("Выйти из аккаунта") }
             Text("Версия 0.1.0", style = MaterialTheme.typography.bodySmall)
         }
     }
