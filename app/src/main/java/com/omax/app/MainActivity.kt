@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 data class ChatMessage(val text: String, val fromUser: Boolean)
 
@@ -29,12 +30,35 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/*
+ * Temporary local brain for Stage 1.
+ * It reads the user's actual message and builds a contextual reply.
+ * Later this class becomes the adapter for the real OMAX model.
+ */
+private fun generateOmaxReply(message: String): String {
+    val text = message.trim()
+    val lower = text.lowercase()
+
+    return when {
+        lower.isEmpty() -> "Я жду сообщение 🤖"
+        lower.contains("привет") || lower.contains("здаров") ||
+            lower.contains("здравствуй") -> "Привет! 👋 Я Омакс. Что будем делать?"
+        lower.contains("как дела") -> "Всё нормально 🤖 Готов разбирать твои сообщения."
+        lower.contains("кто ты") || lower.contains("что ты") ->
+            "Я Омакс — нейросеть, которую мы сейчас строим 🧠"
+        lower.contains("омакс") -> "Да, я здесь 😎 Рассказывай."
+        lower.endsWith("?") -> "Интересный вопрос. Я вижу твой вопрос: «$text» — давай разберём его по смыслу."
+        else -> "Я получил сообщение «$text» и обработал его. Пока мой мозг работает локально; настоящую модель подключим следующим этапом 🧠"
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OmaxApp() {
     var input by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
     var showNewChat by remember { mutableStateOf(false) }
+    var isThinking by remember { mutableStateOf(false) }
     var messages by remember {
         mutableStateOf(listOf(ChatMessage("Привет! Я Омакс 🤖", false)))
     }
@@ -65,7 +89,10 @@ fun OmaxApp() {
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Омакс", style = MaterialTheme.typography.titleLarge)
-                        Text("Нейросеть", style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            if (isThinking) "Думает…" else "Нейросеть",
+                            style = MaterialTheme.typography.labelSmall
+                        )
                     }
                 },
                 actions = {
@@ -87,20 +114,33 @@ fun OmaxApp() {
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Напиши Омаксу...") },
                     shape = RoundedCornerShape(22.dp),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = !isThinking
                 )
                 Spacer(Modifier.width(8.dp))
                 FilledIconButton(
+                    enabled = !isThinking,
                     onClick = {
-                        if (input.isNotBlank()) {
-                            messages = messages + ChatMessage(input.trim(), true)
+                        val userText = input.trim()
+                        if (userText.isNotBlank()) {
+                            messages = messages + ChatMessage(userText, true)
                             input = ""
+                            isThinking = true
                         }
                     }
                 ) { Text("➤") }
             }
         }
     ) { padding ->
+        LaunchedEffect(isThinking) {
+            if (isThinking) {
+                delay(700)
+                val lastUserMessage = messages.lastOrNull { it.fromUser }?.text ?: ""
+                messages = messages + ChatMessage(generateOmaxReply(lastUserMessage), false)
+                isThinking = false
+            }
+        }
+
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
@@ -117,6 +157,19 @@ fun OmaxApp() {
                         modifier = Modifier.widthIn(max = 360.dp)
                     ) {
                         Text(message.text, Modifier.padding(14.dp))
+                    }
+                }
+            }
+
+            if (isThinking) {
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            tonalElevation = 3.dp
+                        ) {
+                            Text("Омакс думает… 🧠", Modifier.padding(14.dp))
+                        }
                     }
                 }
             }
