@@ -34,8 +34,24 @@ class MainActivity : ComponentActivity() {
 fun OmaxApp() {
     var input by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
+    var showNewChat by remember { mutableStateOf(false) }
     var messages by remember {
         mutableStateOf(listOf(ChatMessage("Привет! Я Омакс 🤖", false)))
+    }
+
+    if (showNewChat) {
+        AlertDialog(
+            onDismissRequest = { showNewChat = false },
+            title = { Text("Новый чат") },
+            text = { Text("Создать новый пустой диалог с Омаксом?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    messages = listOf(ChatMessage("Новый чат. Я Омакс 🤖", false))
+                    showNewChat = false
+                }) { Text("Создать") }
+            },
+            dismissButton = { TextButton(onClick = { showNewChat = false }) { Text("Отмена") } }
+        )
     }
 
     if (showSettings) {
@@ -53,6 +69,7 @@ fun OmaxApp() {
                     }
                 },
                 actions = {
+                    TextButton(onClick = { showNewChat = true }) { Text("+") }
                     IconButton(onClick = { showSettings = true }) {
                         Icon(Icons.Default.Settings, contentDescription = "Настройки")
                     }
