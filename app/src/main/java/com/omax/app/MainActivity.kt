@@ -632,6 +632,11 @@ fun SettingsScreen(
             Button(onClick = onGitHub) { Text("Привязать GitHub") }
 
             HorizontalDivider()
+            Text("Дверь", style = MaterialTheme.typography.titleMedium)
+            Text("🚪 Дверь в OMAX уже построена. Теперь можно двигаться дальше.")
+            Button(onClick = { }) { Text("Открыть дверь") }
+
+            HorizontalDivider()
             Text("Тёмная тема", style = MaterialTheme.typography.titleMedium)
             Text("Сейчас включена автоматически.", style = MaterialTheme.typography.bodyMedium)
             Button(onClick = onSignOut) { Text("Выйти из аккаунта") }
