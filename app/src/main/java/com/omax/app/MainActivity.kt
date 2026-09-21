@@ -30,25 +30,31 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/*
- * Temporary local brain for Stage 1.
- * It reads the user's actual message and builds a contextual reply.
- * Later this class becomes the adapter for the real OMAX model.
- */
-private fun generateOmaxReply(message: String): String {
-    val text = message.trim()
-    val lower = text.lowercase()
+private fun generateOmaxReply(history: List<ChatMessage>): String {
+    val last = history.lastOrNull { it.fromUser }?.text?.trim().orEmpty()
+    val lower = last.lowercase()
+    val previousUserMessages = history.filter { it.fromUser }.dropLast(1).takeLast(3).map { it.text }
 
     return when {
-        lower.isEmpty() -> "Я жду сообщение 🤖"
-        lower.contains("привет") || lower.contains("здаров") ||
-            lower.contains("здравствуй") -> "Привет! 👋 Я Омакс. Что будем делать?"
-        lower.contains("как дела") -> "Всё нормально 🤖 Готов разбирать твои сообщения."
-        lower.contains("кто ты") || lower.contains("что ты") ->
-            "Я Омакс — нейросеть, которую мы сейчас строим 🧠"
-        lower.contains("омакс") -> "Да, я здесь 😎 Рассказывай."
-        lower.endsWith("?") -> "Интересный вопрос. Я вижу твой вопрос: «$text» — давай разберём его по смыслу."
-        else -> "Я получил сообщение «$text» и обработал его. Пока мой мозг работает локально; настоящую модель подключим следующим этапом 🧠"
+        last.isEmpty() -> "Я жду сообщение 🤖"
+        lower.contains("привет") || lower.contains("здаров") || lower.contains("здравствуй") ->
+            if (previousUserMessages.isNotEmpty()) "Привет снова! 👋 Я помню, что мы уже общались. Продолжай."
+            else "Привет! 👋 Я Омакс. Что будем делать?"
+        lower.contains("как дела") -> "Всё нормально 🤖 Я готов продолжать наш диалог."
+        lower.contains("кто ты") || lower.contains("что ты") -> "Я Омакс — нейросеть, которую мы сейчас строим 🧠"
+        lower.contains("омакс") -> "Да, я здесь 😎 Я учитываю сообщения выше в этом чате."
+        lower.contains("что я") && previousUserMessages.isNotEmpty() ->
+            "До этого ты писал: «" + previousUserMessages.last() + "»."
+        lower.endsWith("?") ->
+            "Я понял вопрос: «" + last + "».
+
+Пока мой локальный мозг умеет анализировать контекст простыми правилами. Следующий шаг — подключить настоящую модель, чтобы отвечать на вопросы свободно."
+        previousUserMessages.isNotEmpty() ->
+            "Понял. Ты написал: «" + last + "».
+
+И это продолжает наш предыдущий разговор: «" + previousUserMessages.last() + "» 🧠"
+        else -> "Понял сообщение: «" + last + "» 🧠
+Я обработал именно твой текст, а не выбрал случайный ответ."
     }
 }
 
@@ -59,9 +65,7 @@ fun OmaxApp() {
     var showSettings by remember { mutableStateOf(false) }
     var showNewChat by remember { mutableStateOf(false) }
     var isThinking by remember { mutableStateOf(false) }
-    var messages by remember {
-        mutableStateOf(listOf(ChatMessage("Привет! Я Омакс 🤖", false)))
-    }
+    var messages by remember { mutableStateOf(listOf(ChatMessage("Привет! Я Омакс 🤖", false))) }
 
     if (showNewChat) {
         AlertDialog(
@@ -89,10 +93,7 @@ fun OmaxApp() {
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Омакс", style = MaterialTheme.typography.titleLarge)
-                        Text(
-                            if (isThinking) "Думает…" else "Нейросеть",
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                        Text(if (isThinking) "Думает…" else "Нейросеть", style = MaterialTheme.typography.labelSmall)
                     }
                 },
                 actions = {
@@ -104,10 +105,7 @@ fun OmaxApp() {
             )
         },
         bottomBar = {
-            Row(
-                Modifier.fillMaxWidth().padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = input,
                     onValueChange = { input = it },
@@ -135,8 +133,7 @@ fun OmaxApp() {
         LaunchedEffect(isThinking) {
             if (isThinking) {
                 delay(700)
-                val lastUserMessage = messages.lastOrNull { it.fromUser }?.text ?: ""
-                messages = messages + ChatMessage(generateOmaxReply(lastUserMessage), false)
+                messages = messages + ChatMessage(generateOmaxReply(messages), false)
                 isThinking = false
             }
         }
@@ -155,19 +152,13 @@ fun OmaxApp() {
                         shape = RoundedCornerShape(18.dp),
                         tonalElevation = 3.dp,
                         modifier = Modifier.widthIn(max = 360.dp)
-                    ) {
-                        Text(message.text, Modifier.padding(14.dp))
-                    }
+                    ) { Text(message.text, Modifier.padding(14.dp)) }
                 }
             }
-
             if (isThinking) {
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-                        Surface(
-                            shape = RoundedCornerShape(18.dp),
-                            tonalElevation = 3.dp
-                        ) {
+                        Surface(shape = RoundedCornerShape(18.dp), tonalElevation = 3.dp) {
                             Text("Омакс думает… 🧠", Modifier.padding(14.dp))
                         }
                     }
@@ -184,9 +175,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Настройки") },
-                navigationIcon = {
-                    TextButton(onClick = onBack) { Text("←") }
-                }
+                navigationIcon = { TextButton(onClick = onBack) { Text("←") } }
             )
         }
     ) { padding ->
