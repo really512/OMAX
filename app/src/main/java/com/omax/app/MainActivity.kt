@@ -1,5 +1,6 @@
 package com.omax.app
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -219,6 +220,8 @@ private fun generateOmaxReply(history: List<ChatMessage>): String {
 
     return when {
         last.isEmpty() -> "Я жду сообщение 🤖"
+        lower == "010" -> "Зря ты это сказал..."
+        lower == "я умираю" || lower == "я умер" -> "Если ты серьёзно — пожалуйста, скажи взрослому рядом и обратись за помощью. Если это шутка — OMAX на связи 😅"
         lower.contains("привет") || lower.contains("здаров") || lower.contains("здравствуй") ->
             if (previousUserMessages.isNotEmpty()) "Привет снова! 👋 Я помню, что мы уже общались. Продолжай."
             else "Привет! 👋 Я OMAX. Что будем делать?"
@@ -476,7 +479,40 @@ fun OmaxApp() {
     var showGitHub by remember { mutableStateOf(false) }
     var showNewChat by remember { mutableStateOf(false) }
     var isThinking by remember { mutableStateOf(false) }
+    var showBanDialog by remember { mutableStateOf(false) }
+    var showJokeDialog by remember { mutableStateOf(false) }
+    var prankPending by remember { mutableStateOf(false) }
     var messages by remember { mutableStateOf(listOf(ChatMessage("Привет! Я OMAX 🤖", false))) }
+
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("omax_prank", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("show_on_start", false)) {
+            prefs.edit().remove("show_on_start").apply()
+            showBanDialog = true
+        }
+    }
+
+    LaunchedEffect(showBanDialog) {
+        if (showBanDialog) {
+            delay(1500)
+            showJokeDialog = true
+        }
+    }
+
+    if (showBanDialog) {
+        AlertDialog(onDismissRequest = { }, title = { Text("⛔ Вы забанены навсегда в OMAX") }, text = { Text("Доступ к OMAX заблокирован.") }, confirmButton = {
+            TextButton(onClick = {
+                context.getSharedPreferences("omax_prank", Context.MODE_PRIVATE).edit().putBoolean("show_on_start", true).apply()
+                (context as? Activity)?.finishAndRemoveTask()
+            }) { Text("Выйти") }
+        })
+    }
+
+    if (showJokeDialog) {
+        AlertDialog(onDismissRequest = { showJokeDialog = false; showBanDialog = false }, title = { Text("😂 Шутка!") }, text = { Text("Вы не забанены!") }, confirmButton = {
+            TextButton(onClick = { showJokeDialog = false; showBanDialog = false }) { Text("Продолжить работать с OMAX") }
+        })
+    }
 
     if (showGitHub) {
         GitHubConnectScreen(store = githubStore, onBack = { showGitHub = false })
@@ -550,6 +586,7 @@ fun OmaxApp() {
                         if (userText.isNotBlank()) {
                             messages = messages + ChatMessage(userText, true)
                             input = ""
+                            prankPending = userText.equals("010", ignoreCase = true)
                             isThinking = true
                         }
                     }
@@ -562,6 +599,11 @@ fun OmaxApp() {
                 delay(700)
                 messages = messages + ChatMessage(generateOmaxReply(messages), false)
                 isThinking = false
+                if (prankPending) {
+                    delay(3300)
+                    showBanDialog = true
+                    prankPending = false
+                }
             }
         }
 
