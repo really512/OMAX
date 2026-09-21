@@ -637,6 +637,8 @@ fun SettingsScreen(
             Button(onClick = { }) { Text("Открыть дверь 🚪") }
             Text("Ручка", style = MaterialTheme.typography.titleSmall)
             Button(onClick = { }) { Text("🔧 Нажать на ручку") }
+            Text("Петли", style = MaterialTheme.typography.titleSmall)
+            Button(onClick = { }) { Text("⚙️ Установить петли") }
 
             HorizontalDivider()
             Text("Тёмная тема", style = MaterialTheme.typography.titleMedium)
