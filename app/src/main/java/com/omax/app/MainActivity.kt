@@ -463,6 +463,61 @@ fun GitHubConnectScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun BrainLabScreen(onBack: () -> Unit) {
+    var learning by remember { mutableStateOf(false) }
+    var debug by remember { mutableStateOf(false) }
+    var memory by remember { mutableStateOf(true) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("🧠 Комната 1 — Лаборатория мозга") },
+                navigationIcon = { TextButton(onClick = onBack) { Text("←") } }
+            )
+        }
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text("Лаборатория мозга", style = MaterialTheme.typography.headlineMedium)
+            Text("Здесь можно управлять экспериментальными функциями OMAX.")
+            HorizontalDivider()
+
+            Text("🧠 Состояние мозга", style = MaterialTheme.typography.titleMedium)
+            Text(if (learning) "OMAX обучается…" else "Готов к работе")
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = learning, onCheckedChange = { learning = it })
+                Text("Режим обучения")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = memory, onCheckedChange = { memory = it })
+                Text("Контекстная память")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = debug, onCheckedChange = { debug = it })
+                Text("Режим отладки")
+            }
+
+            if (debug) {
+                Surface(shape = RoundedCornerShape(16.dp), tonalElevation = 3.dp) {
+                    Text(
+                        "DEBUG: локальный мозг активен • правила ответов загружены",
+                        Modifier.padding(16.dp)
+                    )
+                }
+            }
+
+            Button(onClick = { learning = !learning }) {
+                Text(if (learning) "Остановить эксперимент" else "Запустить эксперимент")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun OmaxApp() {
     val auth = remember { FirebaseAuth.getInstance() }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -477,6 +532,7 @@ fun OmaxApp() {
     var input by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
     var showGitHub by remember { mutableStateOf(false) }
+    var showBrainLab by remember { mutableStateOf(false) }
     var showNewChat by remember { mutableStateOf(false) }
     var isThinking by remember { mutableStateOf(false) }
     var showBanDialog by remember { mutableStateOf(false) }
@@ -519,6 +575,11 @@ fun OmaxApp() {
         return
     }
 
+    if (showBrainLab) {
+        BrainLabScreen(onBack = { showBrainLab = false })
+        return
+    }
+
     if (showNewChat) {
         AlertDialog(
             onDismissRequest = { showNewChat = false },
@@ -538,6 +599,7 @@ fun OmaxApp() {
         SettingsScreen(
             email = auth.currentUser?.email.orEmpty(),
             onGitHub = { showGitHub = true },
+            onBrainLab = { showBrainLab = true },
             onSignOut = {
                 auth.signOut()
                 loggedIn = false
@@ -649,6 +711,7 @@ fun OmaxApp() {
 fun SettingsScreen(
     email: String,
     onGitHub: () -> Unit,
+    onBrainLab: () -> Unit,
     onSignOut: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -667,6 +730,12 @@ fun SettingsScreen(
             Text("OMAX", style = MaterialTheme.typography.headlineMedium)
             Text("Аккаунт", style = MaterialTheme.typography.titleMedium)
             Text(email.ifBlank { "Email не указан" })
+            HorizontalDivider()
+
+            Text("🧠 Лаборатория мозга", style = MaterialTheme.typography.titleMedium)
+            Text("Комната 1 — экспериментальные функции нейросети.")
+            Button(onClick = onBrainLab) { Text("Войти в комнату 1 🧠") }
+
             HorizontalDivider()
 
             Text("GitHub", style = MaterialTheme.typography.titleMedium)
